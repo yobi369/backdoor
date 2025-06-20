@@ -1,11 +1,14 @@
 # Backdoor Project
 
 ## Overview
-This project implements a reverse shell that allows command execution on a remote server. It provides functionalities such as file upload/download, command history management, and basic authentication. The communication is secured using SSL, and all data is encrypted for confidentiality.
+This project implements a reverse shell that allows command execution on a remote server. It has been enhanced with basic malware analysis capabilities, focusing on static analysis of files. The tool provides functionalities such as file upload/download, command history management, basic authentication, and new commands for file hashing and string extraction. Communication is secured using SSL, and all data is encrypted.
 
 ## Features
 - **Command Execution**: Execute a variety of shell commands on the remote server.
 - **File Management**: Upload and download files securely.
+- **Static Malware Analysis**:
+    - `analyze_strings [filepath]`: Extract printable strings from a specified file.
+    - `get_file_hash [filepath] [md5|sha1|sha256]`: Calculate and display the MD5, SHA1, or SHA256 hash of a file. Defaults to SHA256.
 - **Command History**: Keep track of executed commands and clear history when needed.
 - **Help Command**: Display available commands and their usage.
 - **Secure Communication**: Utilizes SSL for secure connections and encryption for data transmission.
@@ -20,6 +23,8 @@ To enhance security, the following environment variables should be set:
 - `cd [directory]`: Change the current directory.
 - `upload [file]`: Upload a file to the server.
 - `download [file]`: Download a file from the server.
+- `analyze_strings [filepath]`: Extract printable strings from the specified file on the server.
+- `get_file_hash [filepath] [md5|sha1|sha256]`: Get the specified hash (default sha256) of the file on the server.
 - `clear`: Clear the shell output.
 - `quit`: Exit the shell.
 - `help`: Display help information about available commands.
@@ -27,6 +32,7 @@ To enhance security, the following environment variables should be set:
 - `clear_history`: Clear the command history.
 
 ## Security Considerations
+- This tool is powerful and can be used for malicious purposes if it falls into the wrong hands. Ensure it is used responsibly and ethically.
 - Ensure that the server IP and password are kept secure and not hardcoded in the source code. Use environment variables to manage sensitive information.
 - Regularly update the encryption key and ensure it is stored securely.
 

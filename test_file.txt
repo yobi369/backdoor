@@ -1,0 +1,9 @@
+This is a test file.
+It contains some printable strings like Hello123 and Special!@#$.
+And also some non-printable characters: \x00\x01\x02\x03
+The quick brown fox jumps over the lazy dog.
+AnotherLineOfText
+1234567890
+This string is definitely longer than four characters.
+Short
+End.

