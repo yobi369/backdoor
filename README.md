@@ -31,8 +31,15 @@ To enhance security, the following environment variables should be set:
 - `history`: List all executed commands.
 - `clear_history`: Clear the command history.
 
+### Windows Specific Commands (if applicable)
+- `list_processes_win`: List running processes on the Windows host.
+- `proc_details_win [PID]`: Get details for a specific process ID on Windows.
+- `read_mem_win [PID] [hex_address] [size]`: Read memory from a process at a given hex address (size in bytes).
+- `scan_mem_win [PID] [string|bytes] [pattern]`: Scan process memory for a string or hex byte pattern.
+
 ## Security Considerations
 - This tool is powerful and can be used for malicious purposes if it falls into the wrong hands. Ensure it is used responsibly and ethically.
+- Operations involving process memory access (`read_mem_win`, `scan_mem_win`) on Windows may require appropriate privileges and can potentially crash the target process or the tool itself if not handled carefully or if invalid parameters are provided. Use with caution.
 - Ensure that the server IP and password are kept secure and not hardcoded in the source code. Use environment variables to manage sensitive information.
 - Regularly update the encryption key and ensure it is stored securely.
 

