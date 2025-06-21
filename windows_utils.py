@@ -322,6 +322,153 @@ def scan_process_memory_windows_impl(pid_str, pattern_type_str, pattern_str):
     return {"pid": pid, "pattern_type": pattern_type_str, "pattern": pattern_str, "found_at_addresses": found_addresses}
 
 
+# For DLL Injection
+PROCESS_CREATE_THREAD = 0x0002
+PROCESS_QUERY_INFORMATION = 0x0400 # Already defined, but for clarity
+PROCESS_VM_OPERATION = 0x0008
+PROCESS_VM_WRITE = 0x0020
+PROCESS_VM_READ = 0x0010 # Already defined
+
+MEM_RESERVE = 0x2000
+MEM_COMMIT = 0x1000 # Already defined
+PAGE_READWRITE = 0x04
+
+VirtualAllocEx = kernel32.VirtualAllocEx
+VirtualAllocEx.restype = wintypes.LPVOID
+VirtualAllocEx.argtypes = [wintypes.HANDLE, wintypes.LPVOID, ctypes.c_size_t, wintypes.DWORD, wintypes.DWORD]
+
+WriteProcessMemory_dll = kernel32.WriteProcessMemory # Alias to avoid conflict if other WriteProcessMemory types are defined
+WriteProcessMemory_dll.restype = wintypes.BOOL
+WriteProcessMemory_dll.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.LPCVOID, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+
+GetModuleHandleA_kernel = kernel32.GetModuleHandleA # To avoid conflict if user defines this
+GetModuleHandleA_kernel.restype = wintypes.HMODULE
+GetModuleHandleA_kernel.argtypes = [wintypes.LPCSTR]
+
+GetProcAddress_kernel = kernel32.GetProcAddress # To avoid conflict
+GetProcAddress_kernel.restype = wintypes.LPVOID # FARPROC
+GetProcAddress_kernel.argtypes = [wintypes.HMODULE, wintypes.LPCSTR]
+
+CreateRemoteThread = kernel32.CreateRemoteThread
+CreateRemoteThread.restype = wintypes.HANDLE
+CreateRemoteThread.argtypes = [
+    wintypes.HANDLE,          # hProcess
+    ctypes.POINTER(ctypes.c_void_p), # lpThreadAttributes (use NULL)
+    ctypes.c_size_t,          # dwStackSize (use 0)
+    wintypes.LPVOID,          # lpStartAddress (e.g. LoadLibraryA)
+    wintypes.LPVOID,          # lpParameter (e.g. path to DLL)
+    wintypes.DWORD,           # dwCreationFlags (use 0)
+    ctypes.POINTER(wintypes.DWORD) # lpThreadId (use NULL or pointer to DWORD)
+]
+
+VirtualFreeEx = kernel32.VirtualFreeEx
+VirtualFreeEx.restype = wintypes.BOOL
+VirtualFreeEx.argtypes = [wintypes.HANDLE, wintypes.LPVOID, ctypes.c_size_t, wintypes.DWORD]
+
+MEM_RELEASE = 0x8000
+INFINITE = 0xFFFFFFFF
+
+WaitForSingleObject = kernel32.WaitForSingleObject
+WaitForSingleObject.restype = wintypes.DWORD
+WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+
+GetExitCodeThread = kernel32.GetExitCodeThread
+GetExitCodeThread.restype = wintypes.BOOL
+GetExitCodeThread.argtypes = [wintypes.HANDLE, wintypes.LPDWORD]
+
+
+def inject_dll_windows_impl(pid_str, dll_path_str):
+    """
+    Injects a DLL into a target process on Windows.
+    Returns a success or error message string.
+    """
+    try:
+        pid = int(pid_str)
+    except ValueError:
+        return "Error: Invalid PID format. PID must be an integer."
+
+    if not os.path.exists(dll_path_str):
+        return f"Error: DLL path '{dll_path_str}' does not exist."
+
+    # Ensure dll_path_str is bytes for WriteProcessMemory
+    dll_path_bytes = dll_path_str.encode('utf-8') + b'\0' # Null-terminate for LoadLibraryA
+
+    h_process = OpenProcess(
+        PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ,
+        False,
+        pid
+    )
+    if not h_process:
+        return f"Error: OpenProcess failed for PID {pid} with code {ctypes.get_last_error()}."
+
+    # Allocate memory in target process for DLL path
+    remote_mem_addr = VirtualAllocEx(h_process, None, len(dll_path_bytes), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)
+    if not remote_mem_addr:
+        err_code = ctypes.get_last_error()
+        CloseHandle(h_process)
+        return f"Error: VirtualAllocEx failed in PID {pid} with code {err_code}."
+
+    # Write DLL path to allocated memory
+    bytes_written = ctypes.c_size_t(0)
+    if not WriteProcessMemory_dll(h_process, remote_mem_addr, dll_path_bytes, len(dll_path_bytes), ctypes.byref(bytes_written)):
+        err_code = ctypes.get_last_error()
+        VirtualFreeEx(h_process, remote_mem_addr, 0, MEM_RELEASE)
+        CloseHandle(h_process)
+        return f"Error: WriteProcessMemory failed in PID {pid} with code {err_code}."
+
+    # Get address of LoadLibraryA
+    h_kernel32 = GetModuleHandleA_kernel(b"kernel32.dll")
+    if not h_kernel32: # Should not happen
+        VirtualFreeEx(h_process, remote_mem_addr, 0, MEM_RELEASE)
+        CloseHandle(h_process)
+        return "Error: GetModuleHandleA for kernel32.dll failed."
+
+    load_library_addr = GetProcAddress_kernel(h_kernel32, b"LoadLibraryA")
+    if not load_library_addr: # Should not happen
+        VirtualFreeEx(h_process, remote_mem_addr, 0, MEM_RELEASE)
+        CloseHandle(h_process)
+        return "Error: GetProcAddress for LoadLibraryA failed."
+
+    # Create remote thread to call LoadLibraryA with DLL path
+    thread_id = wintypes.DWORD()
+    h_thread = CreateRemoteThread(
+        h_process,
+        None, # Security attributes
+        0,    # Stack size
+        load_library_addr,
+        remote_mem_addr, # Parameter (path to DLL)
+        0,    # Creation flags
+        ctypes.byref(thread_id)
+    )
+
+    if not h_thread:
+        err_code = ctypes.get_last_error()
+        VirtualFreeEx(h_process, remote_mem_addr, 0, MEM_RELEASE)
+        CloseHandle(h_process)
+        return f"Error: CreateRemoteThread failed in PID {pid} with code {err_code}."
+
+    # Wait for the remote thread to finish and get its exit code (HMODULE of loaded DLL)
+    WaitForSingleObject(h_thread, INFINITE)
+
+    dll_handle_exit_code = wintypes.DWORD()
+    if not GetExitCodeThread(h_thread, ctypes.byref(dll_handle_exit_code)):
+        # Not critical if this fails, but good to know
+        warning_msg = f" (Warning: GetExitCodeThread failed with {ctypes.get_last_error()})"
+    else:
+        warning_msg = ""
+
+
+    # Clean up
+    VirtualFreeEx(h_process, remote_mem_addr, 0, MEM_RELEASE)
+    CloseHandle(h_thread)
+    CloseHandle(h_process)
+
+    if dll_handle_exit_code.value == 0: # LoadLibrary returns NULL (0) on failure
+        return f"DLL Injection into PID {pid} reported failure (LoadLibrary returned NULL).{warning_msg}"
+
+    return f"DLL '{dll_path_str}' successfully injected into PID {pid}. LoadLibrary returned handle: 0x{dll_handle_exit_code.value:X}.{warning_msg}"
+
+
 if __name__ == '__main__':
     # This section can be used for direct testing of windows_utils.py functions
     # For example, when developing list_processes_windows_impl, you could call it here

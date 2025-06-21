@@ -47,7 +47,8 @@ if IS_WINDOWS:
         'list_processes_win',
         'proc_details_win',
         'read_mem_win',
-        'scan_mem_win'
+        'scan_mem_win',
+        'inject_dll_win'
     })
 command_history = []
 
@@ -333,6 +334,7 @@ def display_help():
     proc_details_win [PID]: Get details for a specific process ID on Windows.
     read_mem_win [PID] [hex_address] [size]: Read memory from a process at a given hex address.
     scan_mem_win [PID] [string|bytes] [pattern]: Scan process memory for a string or hex byte pattern.
+    inject_dll_win [PID] [DLL_PATH]: Inject a DLL into a target process on Windows.
     """
     reliable_send(help_text)
 
