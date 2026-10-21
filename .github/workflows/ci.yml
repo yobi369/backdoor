@@ -41,3 +41,7 @@ jobs:
         run: accessguard --version
       - name: Verify SARIF CLI output
         run: accessguard --format sarif > /tmp/accessguard.sarif
+      - name: Dogfood source audit and validate portable JSON report
+        run: |
+          accessguard --source-root . --format json > /tmp/accessguard-self-audit.json
+          python -c 'import json; from pathlib import Path; d=json.load(open("/tmp/accessguard-self-audit.json", encoding="utf-8")); f=d["findings"]; s=d["summary"]; assert s["total"] == len(f); assert sum(s["by_severity"].values()) == len(f); assert all(not Path(x["path"]).is_absolute() for x in f if x.get("path"))'
