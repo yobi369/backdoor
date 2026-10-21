@@ -13,14 +13,14 @@ from pathlib import Path
 
 from access_audit import Finding, finding
 
-SUPPORTED_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx"}
+SUPPORTED_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf"}
 SKIP_DIRECTORIES = {
     ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
     "coverage", ".tox", ".mypy_cache", ".pytest_cache", "__pycache__",
 }
 MAX_SOURCE_BYTES = 1_000_000
 SECRET_ASSIGNMENT = re.compile(
-    r"""\b(?:api[_-]?key|secret(?:[_-]?key)?|password|passwd|access[_-]?token|auth[_-]?token)\b\s*[:=]\s*(['"])(?P<value>[^'"\n]{8,})\1""",
+    r"""\b(?:api[_-]?key|secret(?:[_-]?key)?|password|passwd|access[_-]?token|auth[_-]?token)\b\s*[:=]\s*(?:(['"])(?P<quoted>[^'"\n]{8,})\1|(?P<bare>[A-Za-z0-9_./+=-]{12,}))""",
     re.IGNORECASE,
 )
 PLACEHOLDER_VALUES = {
@@ -98,6 +98,16 @@ def _python_findings(path: Path, text: str) -> list[Finding]:
             findings.append(finding("AG-CODE-007", "medium", "Race-prone temporary filename API used",
                 "mktemp returns a name without securely creating the file, creating a race window.",
                 "Call to tempfile.mktemp", path, "Use NamedTemporaryFile or another atomic temporary-file API.", line=line))
+        if name.endswith((".execute", ".executemany", ".query")) and node.args:
+            query = node.args[0]
+            formatted_query = isinstance(query, (ast.JoinedStr, ast.BinOp))
+            if isinstance(query, ast.Call) and _call_name(query.func).endswith(".format"):
+                formatted_query = True
+            if formatted_query:
+                findings.append(finding("AG-CODE-013", "high", "Potential SQL query built dynamically",
+                    "A query/execute call receives a formatted or concatenated expression; SQL injection depends on the database API and input provenance.",
+                    f"Dynamic query expression passed to {name}", path,
+                    "Use parameterized queries for values and allowlist any dynamic identifiers.", line=line))
 
     return findings
 
@@ -129,10 +139,15 @@ def _line_findings(path: Path, text: str) -> list[Finding]:
                     "A false TLS-verification option can allow intercepted connections; library context is not inferred.",
                     "TLS verification option set to false", path,
                     "Keep certificate verification enabled and configure trusted CA certificates.", line=number))
+            if re.search(r"\b(?:query|execute)\s*\(\s*\x60[^\x60]*\$\{", line):
+                findings.append(finding("AG-CODE-013", "high", "Potential SQL query built dynamically",
+                    "A query/execute call appears to use template interpolation; SQL injection depends on API and input provenance.",
+                    "Interpolated template passed to query/execute; data flow is not assessed", path,
+                    "Use parameterized queries for values and allowlist any dynamic identifiers.", line=number))
 
         secret_match = SECRET_ASSIGNMENT.search(line)
         if secret_match:
-            value = secret_match.group("value").strip()
+            value = (secret_match.group("quoted") or secret_match.group("bare") or "").strip()
             normalized = value.lower().replace("-", "_").replace(" ", "_")
             placeholder = normalized in PLACEHOLDER_VALUES or normalized.startswith(
                 ("your_", "example_", "placeholder_", "replace_me")
@@ -173,7 +188,8 @@ def audit_source_tree(root: Path) -> list[Finding]:
         )
         for filename in sorted(filenames):
             path = current_path / filename
-            if path.suffix.lower() not in SUPPORTED_SUFFIXES or path.is_symlink():
+            is_env_file = path.name == ".env" or path.name.startswith(".env.")
+            if (path.suffix.lower() not in SUPPORTED_SUFFIXES and not is_env_file) or path.is_symlink():
                 continue
             try:
                 file_info = path.stat()
