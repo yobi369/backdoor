@@ -1,5 +1,6 @@
 """Read-only local SSH and host-permission security auditor."""
 from __future__ import annotations
+
 import argparse
 import json
 import os
