@@ -1,72 +1,110 @@
-# AccessGuard: Local SSH Security Auditor
+# AccessGuard — Local Security Posture Auditor
 
-AccessGuard is a small, dependency-free Python tool for reviewing common SSH server configuration risks and local SSH key-file permission problems. It is designed for administrators auditing systems they own or are authorized to assess.
+AccessGuard is a dependency-free Python security engineering project for reviewing selected SSH configuration, SSH key-file permissions, and high-value Unix account-policy file permissions. It is intended for systems you own or are explicitly authorized to assess.
 
-> **Safety and scope:** The original reverse-shell prototype has been retired. This repository no longer provides remote command execution, covert access, persistence, or remote file-transfer capabilities. AccessGuard is read-only: it reports findings and recommendations but does not change system settings or files.
+**Scope by design:** AccessGuard is read-only with respect to audited targets. It does not connect to remote hosts, execute shell commands, install services, establish persistence, or automatically remediate findings. Reports are printed to standard output; redirect them to save a report.
 
-## What it checks
+## Capabilities
 
-- SSH server settings that can increase risk, including root login, empty passwords, password authentication, and disabled public-key authentication.
-- Broad permissions on the selected SSH directory.
-- Group/other access to common private-key filenames.
-- Group/other write access to authorized_keys.
-- Optional JSON output for automation and evidence capture.
-
-This is a focused rules-based check, **not** a complete vulnerability scanner or a guarantee that a host is secure. It does not connect to remote hosts, enumerate networks, execute shell commands, or install services.
+- Stable rule IDs, severity ratings, evidence, remediation guidance, and references.
+- Text, JSON, Markdown, and SARIF 2.1.0 report formats.
+- Baseline suppressions for findings accepted by a team after review.
+- CI-friendly fail-on severity thresholds.
+- Checks for selected SSH daemon settings, SSH directory/private-key permissions, and selected Unix account-policy files.
+- Unit tests and GitHub Actions validation.
 
 ## Requirements
 
-- Python 3.10 or later
+- Python 3.10+
 - No third-party runtime dependencies
 
 ## Quick start
 
-Run the default local checks (only targets that exist are selected automatically):
+Run default local checks:
 
 ~~~bash
 python3 access_audit.py
 ~~~
 
-Explicitly inspect a configuration file and SSH directory:
+Audit explicit SSH files:
 
 ~~~bash
 python3 access_audit.py --sshd-config /etc/ssh/sshd_config --ssh-dir ~/.ssh
 ~~~
 
-Print JSON for a pipeline or report collector:
+Run selected Unix host-policy checks:
 
 ~~~bash
-python3 access_audit.py --sshd-config /etc/ssh/sshd_config --ssh-dir ~/.ssh --json
+python3 access_audit.py --host-root /
 ~~~
 
-The tool does not require root for user-owned files. Some system configuration files may not be readable by your account; in that case it reports the issue instead of attempting privilege escalation.
+Create machine-readable JSON or Markdown output:
 
-## Interpreting findings
+~~~bash
+python3 access_audit.py --format json
+python3 access_audit.py --format markdown
+~~~
 
-- **Critical / High:** investigate promptly; verify file ownership and access policy before changing permissions.
-- **Medium:** review against your threat model and operational needs.
-- **Low / Info:** informational or configuration-quality observations.
+Generate SARIF for supported reporting workflows:
 
-Recommendations are guidance, not automatic remediation. Changes to SSH access can lock you out; maintain an approved recovery path before applying them.
+~~~bash
+python3 access_audit.py --format sarif
+~~~
 
-## Development and tests
+Fail a CI step when a high-or-critical finding is present:
 
-Run the standard-library test suite:
+~~~bash
+python3 access_audit.py --fail-on high
+~~~
+
+Exit codes: 0 means the audit completed without crossing the selected threshold; 1 means the threshold was met; 2 means an input or baseline error occurred.
+
+## Baselines
+
+A baseline is a JSON file containing reviewed, accepted findings. Match both rule ID and path for a narrow suppression:
+
+~~~json
+{
+  "suppressions": [
+    {
+      "rule_id": "AG-SSH-002",
+      "path": "/etc/ssh/sshd_config"
+    }
+  ]
+}
+~~~
+
+Then run:
+
+~~~bash
+python3 access_audit.py --baseline baseline.json --format json
+~~~
+
+Treat baselines as reviewed security exceptions, not a way to hide unresolved risk. Keep them in version control and periodically reassess each exception.
+
+## Tests
 
 ~~~bash
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q access_audit.py backdoor.py tests
 ~~~
 
-Continuous integration runs these checks on Python 3.10.
+GitHub Actions runs the test and compile checks on Python 3.10.
 
-## Limitations
+## Rule scope and limitations
 
-- The audit checks only the directives and file patterns listed above.
-- SSH configuration includes advanced features (such as Match blocks and included files) that this small parser does not fully interpret. Review those manually.
-- File ownership checks vary by platform; this version focuses on permission bits and does not claim complete cross-platform coverage.
-- No automated remediation is performed.
+AccessGuard is a focused rules-based auditor, **not** a complete endpoint detection and response platform, vulnerability scanner, compliance certification, or guarantee of security.
+
+- SSH Match blocks and Include files are flagged for manual review; effective OpenSSH configuration is not fully evaluated.
+- Checks use filesystem permission bits. ACLs, ownership correctness, extended attributes, containers, service state, PAM, firewall state, kernel configuration, and network exposure are not comprehensively assessed.
+- Host checks inspect only selected files and do not recursively scan the filesystem.
+- Severity is a prioritization aid, not a formal risk score. Validate findings against the actual environment before making changes.
+- The tool does not perform automatic remediation. Changes to SSH and account policy can lock out administrators; use an approved recovery path.
 
 ## Security reporting
 
-Please avoid posting secrets, private keys, passwords, or sensitive host details in public issues. See SECURITY.md for reporting guidance.
+Do not include credentials, private keys, access tokens, or sensitive host details in public issues. See SECURITY.md.
+
+## Project direction
+
+The goal is a transparent, testable, defensively focused security tool. Contributions should add documented rules, deterministic tests, evidence quality, platform-aware behavior, and clear false-positive handling.
