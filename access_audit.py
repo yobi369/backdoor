@@ -29,43 +29,104 @@ def finding(rule_id, severity, title, description, evidence="", path=None, remed
     return Finding(rule_id, severity, title, description, evidence, str(path) if path is not None else None, remediation, references)
 
 def _parse_global_sshd_options(path: Path):
+    """Parse global SSH options and expand bounded Include patterns.
+
+    This is deliberately not a full OpenSSH parser: Match conditions and
+    OpenSSH-specific token expansion are reported as limitations.
+    """
+    import glob
+    import shlex
+
     options, findings = {}, []
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError as exc:
-        return {}, [finding("AG-SSH-001", "info", "SSH configuration could not be read",
-            "The configuration file could not be inspected.", str(exc), path,
-            "Check the path and read permissions.")]
-    in_match = False
-    for number, raw in enumerate(lines, 1):
-        line = raw.split("#", 1)[0].strip()
-        if not line:
-            continue
-        parts = line.split(None, 1)
-        key = parts[0].lower()
-        if key == "match":
-            in_match = True
-            findings.append(finding("AG-SSH-009", "info", "Conditional SSH configuration requires review",
-                "A Match block was found; conditional rules are not evaluated.",
-                f"Line {number}: {raw.strip()}", path,
-                "Review each Match block and validate effective settings with OpenSSH.",
-                ("https://man.openbsd.org/sshd_config",)))
-            continue
-        if key == "include":
-            findings.append(finding("AG-SSH-010", "info", "Included SSH configuration requires review",
-                "Included files are not expanded by this audit.",
-                f"Line {number}: {raw.strip()}", path,
-                "Review each included file and validate effective settings with OpenSSH.",
-                ("https://man.openbsd.org/sshd_config",)))
-            continue
-        if in_match:
-            continue
-        if len(parts) != 2:
-            findings.append(finding("AG-SSH-011", "low", "Malformed SSH configuration directive",
-                "A non-comment line does not contain a directive and value.",
-                f"Line {number}: {raw.strip()}", path, "Review against the sshd_config manual."))
-            continue
-        options.setdefault(key, parts[1].strip().lower())
+    root_dir = path.parent
+    state = {"in_match": False, "files_seen": 0}
+    max_depth, max_files = 16, 256
+
+    def add_include_note(rule_id, title, description, evidence, source_path, remediation):
+        findings.append(finding(rule_id, "info", title, description, evidence, source_path, remediation,
+            ("https://man.openbsd.org/sshd_config",)))
+
+    def parse_file(current: Path, depth: int, stack: set[Path], is_root: bool = False):
+        resolved = current.resolve()
+        if resolved in stack:
+            add_include_note("AG-SSH-014", "SSH Include cycle detected",
+                "An Include pattern leads back to a file already being parsed; expansion stopped for this branch.",
+                str(resolved), current, "Remove the recursive Include relationship and validate the configuration with OpenSSH.")
+            return
+        if depth > max_depth or state["files_seen"] >= max_files:
+            add_include_note("AG-SSH-014", "SSH Include expansion limit reached",
+                "The bounded Include expansion limit was reached; remaining configuration was not inspected.",
+                str(current), current, "Review the Include graph and validate the effective configuration with OpenSSH.")
+            return
+        state["files_seen"] += 1
+        try:
+            lines = current.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError as exc:
+            if is_root:
+                findings.append(finding("AG-SSH-001", "info", "SSH configuration could not be read",
+                    "The configuration file could not be inspected.", str(exc), current,
+                    "Check the path and read permissions."))
+            else:
+                add_include_note("AG-SSH-010", "Included SSH configuration could not be read",
+                    "An included file matched a pattern but could not be inspected.", str(exc), current,
+                    "Check the include path and read permissions, then validate the effective configuration with OpenSSH.")
+            return
+
+        next_stack = stack | {resolved}
+        for number, raw in enumerate(lines, 1):
+            line = raw.split("#", 1)[0].strip()
+            if not line:
+                continue
+            parts = line.split(None, 1)
+            key = parts[0].lower()
+            value = parts[1].strip() if len(parts) == 2 else ""
+
+            if key == "match":
+                state["in_match"] = True
+                add_include_note("AG-SSH-009", "Conditional SSH configuration requires review",
+                    "A Match block was found; conditional rules are not evaluated.",
+                    f"Line {number}: {raw.strip()}", current,
+                    "Review each Match block and validate effective settings with OpenSSH.")
+                continue
+
+            if key == "include":
+                if not value:
+                    add_include_note("AG-SSH-010", "SSH Include directive has no path",
+                        "An Include directive did not provide a path pattern.",
+                        f"Line {number}: {raw.strip()}", current,
+                        "Provide a valid Include pattern and validate the configuration with OpenSSH.")
+                    continue
+                try:
+                    patterns = shlex.split(value, comments=False, posix=True)
+                except ValueError as exc:
+                    add_include_note("AG-SSH-010", "SSH Include pattern is malformed",
+                        "The Include pattern could not be parsed safely.", f"Line {number}: {exc}",
+                        current, "Correct quoting in the Include directive and validate with OpenSSH.")
+                    continue
+                for pattern in patterns:
+                    candidate = Path(pattern)
+                    search_pattern = str(candidate if candidate.is_absolute() else root_dir / candidate)
+                    matches = sorted(glob.glob(search_pattern))
+                    if not matches:
+                        add_include_note("AG-SSH-010", "SSH Include pattern matched no files",
+                            "The Include pattern did not resolve to any files; configuration coverage may be incomplete.",
+                            f"Line {number}: {pattern}", current,
+                            "Check the pattern and target files, then validate the effective configuration with OpenSSH.")
+                        continue
+                    for matched in matches:
+                        parse_file(Path(matched), depth + 1, next_stack)
+                continue
+
+            if state["in_match"]:
+                continue
+            if len(parts) != 2:
+                findings.append(finding("AG-SSH-011", "low", "Malformed SSH configuration directive",
+                    "A non-comment line does not contain a directive and value.",
+                    f"Line {number}: {raw.strip()}", current, "Review against the sshd_config manual."))
+                continue
+            options.setdefault(key, value.lower())
+
+    parse_file(path, 0, set(), is_root=True)
     return options, findings
 
 def audit_sshd_config(path: Path) -> list[Finding]:
