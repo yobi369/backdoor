@@ -16,45 +16,56 @@ AccessGuard is a dependency-free Python security engineering project for reviewi
 ## Requirements
 
 - Python 3.10+
-- No third-party runtime dependencies
+- No third-party runtime dependencies at runtime
+
+## Install
+
+From a cloned repository:
+
+~~~bash
+python3 -m pip install .
+accessguard --version
+~~~
+
+Or run directly from the source checkout with Python.
 
 ## Quick start
 
 Run default local checks:
 
 ~~~bash
-python3 access_audit.py
+accessguard
 ~~~
 
 Audit explicit SSH files:
 
 ~~~bash
-python3 access_audit.py --sshd-config /etc/ssh/sshd_config --ssh-dir ~/.ssh
+accessguard --sshd-config /etc/ssh/sshd_config --ssh-dir ~/.ssh
 ~~~
 
 Run selected Unix host-policy checks:
 
 ~~~bash
-python3 access_audit.py --host-root /
+accessguard --host-root /
 ~~~
 
 Create machine-readable JSON or Markdown output:
 
 ~~~bash
-python3 access_audit.py --format json
-python3 access_audit.py --format markdown
+accessguard --format json
+accessguard --format markdown
 ~~~
 
 Generate SARIF for supported reporting workflows:
 
 ~~~bash
-python3 access_audit.py --format sarif
+accessguard --format sarif
 ~~~
 
 Fail a CI step when a high-or-critical finding is present:
 
 ~~~bash
-python3 access_audit.py --fail-on high
+accessguard --fail-on high
 ~~~
 
 Exit codes: 0 means the audit completed without crossing the selected threshold; 1 means the threshold was met; 2 means an input or baseline error occurred.
@@ -77,7 +88,7 @@ A baseline is a JSON file containing reviewed, accepted findings. Match both rul
 Then run:
 
 ~~~bash
-python3 access_audit.py --baseline baseline.json --format json
+accessguard --baseline baseline.json --format json
 ~~~
 
 Treat baselines as reviewed security exceptions, not a way to hide unresolved risk. Keep them in version control and periodically reassess each exception.
@@ -89,7 +100,7 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q access_audit.py backdoor.py tests
 ~~~
 
-GitHub Actions runs the test and compile checks on Python 3.10.
+GitHub Actions runs tests, compiles the source, installs the package, and smoke-tests the installed CLI and SARIF output.
 
 ## Rule scope and limitations
 
