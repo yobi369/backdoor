@@ -1,6 +1,6 @@
 # AccessGuard — Local Security Posture Auditor
 
-AccessGuard is a dependency-free Python security engineering project for reviewing selected SSH configuration, SSH key-file permissions, and high-value Unix account-policy file permissions. It is intended for systems you own or are explicitly authorized to assess.
+AccessGuard is a dependency-free Python security auditing tool for reviewing selected local SSH/host-policy settings and scanning Python, JavaScript, and TypeScript source for security-sensitive code patterns. It is intended for systems you own or are explicitly authorized to assess.
 
 **Scope by design:** AccessGuard is read-only with respect to audited targets. It does not connect to remote hosts, execute shell commands, install services, establish persistence, or automatically remediate findings. Reports are printed to standard output; redirect them to save a report.
 
@@ -11,6 +11,7 @@ AccessGuard is a dependency-free Python security engineering project for reviewi
 - Baseline suppressions for findings accepted by a team after review.
 - CI-friendly fail-on severity thresholds.
 - Checks for selected SSH daemon settings, SSH directory/private-key permissions, and selected Unix account-policy files.
+- Conservative source-code checks for dynamic execution, shell invocation, unsafe deserialization/YAML loading, disabled TLS verification, risky HTML sinks, race-prone temporary files, and likely hard-coded credentials.
 - Unit tests and GitHub Actions validation.
 
 ## Requirements
@@ -36,6 +37,14 @@ Run default local checks:
 ~~~bash
 accessguard
 ~~~
+
+Audit a local source repository (Python, JavaScript, TypeScript):
+
+~~~bash
+accessguard --source-root /path/to/project --format sarif > accessguard.sarif
+~~~
+
+Source findings are static review candidates, not proof of exploitability. Source mode does not perform taint analysis, run code, fetch dependencies, or exploit the target.
 
 Audit explicit SSH files:
 
@@ -97,7 +106,7 @@ Treat baselines as reviewed security exceptions, not a way to hide unresolved ri
 
 ~~~bash
 python3 -m unittest discover -s tests -v
-python3 -m compileall -q access_audit.py backdoor.py tests
+python3 -m compileall -q access_audit.py source_audit.py backdoor.py tests
 ~~~
 
 GitHub Actions runs tests, compiles the source, installs the package, and smoke-tests the installed CLI and SARIF output.
@@ -107,8 +116,10 @@ GitHub Actions runs tests, compiles the source, installs the package, and smoke-
 AccessGuard is a focused rules-based auditor, **not** a complete endpoint detection and response platform, vulnerability scanner, compliance certification, or guarantee of security.
 
 - SSH Include patterns are expanded with bounded recursion; Match blocks and OpenSSH token expansion are not fully evaluated, so effective settings still require platform validation.
+- Source-code checks are conservative pattern/AST heuristics. They do not replace language-specific SAST, dependency auditing, secret-history scanning, dynamic testing, or manual review.
 - Checks use filesystem permission bits. ACLs, ownership correctness, extended attributes, containers, service state, PAM, firewall state, kernel configuration, and network exposure are not comprehensively assessed.
 - Host checks inspect only selected files and do not recursively scan the filesystem.
+- Source-code checks are conservative pattern/AST heuristics. They do not replace language-specific SAST, dependency auditing, secret-history scanning, dynamic testing, or manual review.
 - Severity is a prioritization aid, not a formal risk score. Validate findings against the actual environment before making changes.
 - The tool does not perform automatic remediation. Changes to SSH and account policy can lock out administrators; use an approved recovery path.
 

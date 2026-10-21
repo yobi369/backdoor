@@ -40,3 +40,22 @@ This catalogue describes the current implemented checks. It is deliberately expl
 - Info: a scope, parsing, or context note.
 
 Severity is not a CVSS score. Findings should be validated against the target system's policy, version, compensating controls, and operational requirements.
+
+## Source-code heuristic rules
+
+| Rule ID | Severity | Check | Important limitation |
+|---|---|---|---|
+| AG-CODE-001 | High | Python/JavaScript dynamic evaluation | Does not trace attacker-controlled data |
+| AG-CODE-002 | High/Medium | Shell-based subprocess or JavaScript exec APIs | Does not perform taint analysis; context matters |
+| AG-CODE-003 | High | Python os.system/os.popen usage | Does not prove the command is attacker-controlled |
+| AG-CODE-004 | High | pickle/marshal deserialization APIs | Trust boundary and data provenance are not inferred |
+| AG-CODE-005 | High | YAML loading without a recognized safe loader | PyYAML version and API context matter |
+| AG-CODE-006 | High | TLS verification explicitly disabled | Library-specific configuration is not fully modeled |
+| AG-CODE-007 | Medium | tempfile.mktemp usage | Requires code review for actual race exposure |
+| AG-CODE-008 | Medium | innerHTML/dangerouslySetInnerHTML sinks | Does not trace sanitization or input provenance |
+| AG-CODE-009 | High/Critical | Credential-like literals or private-key header | Heuristic may flag test fixtures; evidence redacts values |
+| AG-CODE-010 | Info | Source file skipped, unreadable, or unparsable | Findings may be incomplete for that file |
+| AG-CODE-011 | Info/Low | Source root cannot be safely inspected | Symlink roots are intentionally rejected |
+| AG-CODE-012 | Info | No enabled source heuristics matched | Not evidence that the code is vulnerability-free |
+
+Source mode currently inspects Python, JavaScript, JSX, TypeScript, and TSX files up to 1 MB each. It skips common generated/dependency directories and does not follow symlinks. It does not scan dependencies, Git history, binaries, templates in other languages, or runtime behavior.

@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "accessguard-auditor"
-version = "1.1.0"
-description = "Read-only local SSH and host-permission security auditor"
+version = "1.2.0"
+description = "Read-only local host-posture and source-code security auditor"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["security", "ssh", "audit", "hardening", "sarif"]
+keywords = ["security", "ssh", "source-audit", "hardening", "sarif"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -26,7 +26,7 @@ classifiers = [
 accessguard = "access_audit:main"
 
 [tool.setuptools]
-py-modules = ["access_audit"]
+py-modules = ["access_audit", "source_audit"]
 
 [tool.ruff]
 line-length = 100

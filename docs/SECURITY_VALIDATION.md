@@ -11,6 +11,7 @@ The corpus currently exercises:
 - Comments, blank lines, and OpenSSH's first-value-wins behavior for global options.
 - Explicit disclosure that `Match` blocks are not evaluated.
 - Include expansion, unresolved patterns, and cycle protection.
+- Conservative Python/JavaScript/TypeScript source-code heuristic checks and SARIF source-line mapping.
 - SARIF 2.1.0 result-to-rule consistency.
 
 ## How to run
