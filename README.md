@@ -1,6 +1,6 @@
 # AccessGuard — Local Security Posture Auditor
 
-AccessGuard is a dependency-free Python security engineering project for reviewing selected SSH configuration, SSH key-file permissions, and high-value Unix account-policy file permissions. It is intended for systems you own or are explicitly authorized to assess.
+AccessGuard is a dependency-free Python security auditing tool for reviewing selected local SSH/host-policy settings and scanning Python, JavaScript, and TypeScript source for security-sensitive code patterns. It is intended for systems you own or are explicitly authorized to assess.
 
 **Scope by design:** AccessGuard is read-only with respect to audited targets. It does not connect to remote hosts, execute shell commands, install services, establish persistence, or automatically remediate findings. Reports are printed to standard output; redirect them to save a report.
 
@@ -10,7 +10,7 @@ AccessGuard is a dependency-free Python security engineering project for reviewi
 - Text, JSON, Markdown, and SARIF 2.1.0 report formats.
 - Baseline suppressions for findings accepted by a team after review.
 - CI-friendly fail-on severity thresholds.
-- Checks for selected SSH daemon settings, SSH directory/private-key permissions, and selected Unix account-policy files.
+- Checks for selected SSH daemon settings, SSH directory/private-key permissions, and selected Unix account-policy files.\n- Conservative source-code checks for dynamic execution, shell invocation, unsafe deserialization/YAML loading, disabled TLS verification, risky HTML sinks, race-prone temporary files, and likely hard-coded credentials.
 - Unit tests and GitHub Actions validation.
 
 ## Requirements
@@ -106,7 +106,7 @@ GitHub Actions runs tests, compiles the source, installs the package, and smoke-
 
 AccessGuard is a focused rules-based auditor, **not** a complete endpoint detection and response platform, vulnerability scanner, compliance certification, or guarantee of security.
 
-- SSH Include patterns are expanded with bounded recursion; Match blocks and OpenSSH token expansion are not fully evaluated, so effective settings still require platform validation.
+- SSH Include patterns are expanded with bounded recursion; Match blocks and OpenSSH token expansion are not fully evaluated, so effective settings still require platform validation.\n- Source-code checks are conservative pattern/AST heuristics. They do not replace language-specific SAST, dependency auditing, secret-history scanning, dynamic testing, or manual review.
 - Checks use filesystem permission bits. ACLs, ownership correctness, extended attributes, containers, service state, PAM, firewall state, kernel configuration, and network exposure are not comprehensively assessed.
 - Host checks inspect only selected files and do not recursively scan the filesystem.
 - Severity is a prioritization aid, not a formal risk score. Validate findings against the actual environment before making changes.
