@@ -20,7 +20,7 @@ SKIP_DIRECTORIES = {
 }
 MAX_SOURCE_BYTES = 1_000_000
 SECRET_ASSIGNMENT = re.compile(
-    r"""\b(?:api[_-]?key|secret(?:[_-]?key)?|password|passwd|access[_-]?token|auth[_-]?token)\b["']?\s*[:=]\s*(?:(['"])(?P<quoted>[^'"\n]{8,})\1|(?P<bare>[A-Za-z0-9_./+=-]{12,}))""",
+    r"""\b(?:api[_-]?(?:key|token)|secret(?:[_-]?key)?|password|passwd|access[_-]?token|auth[_-]?token)\b["']?\s*[:=]\s*(?:(['"])(?P<quoted>[^'"\n]{8,})\1|(?P<bare>[A-Za-z0-9_./+=-]{12,}))""",
     re.IGNORECASE,
 )
 PLACEHOLDER_VALUES = {
