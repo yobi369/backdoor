@@ -141,7 +141,7 @@ def audit_ssh_directory(path: Path) -> list[Finding]:
                                     "Private SSH key is accessible by group or others",
                                     f"Mode is {mode:04o}.", str(entry),
                                     "Restrict the private key to its owner (commonly chmod 600)."))
-        elif name == "authorized_keys" and mode & (stat.S_IWGRP | stat.IWOTH):
+        elif name == "authorized_keys" and mode & (stat.S_IWGRP | stat.S_IWOTH):
             findings.append(Finding("high", "SSH_AUTHORIZED_KEYS_WRITABLE",
                                     "authorized_keys can be modified by others",
                                     f"Mode is {mode:04o}.", str(entry),
