@@ -83,10 +83,10 @@ class SSHRegressionCorpusTests(unittest.TestCase):
     def test_include_expands_files_and_detects_risky_global_policy(self):
         included = self.root / "sshd_config.d" / "10-security.conf"
         included.parent.mkdir()
-        included.write_text("PermitRootLogin yes\\n", encoding="utf-8")
+        included.write_text("PermitRootLogin yes\n", encoding="utf-8")
         findings = audit_sshd_config(self.write_config(
-            f'Include "{included}"\\n'
-            "PermitRootLogin no\\n"
+            f'Include "{included}"\n'
+            "PermitRootLogin no\n"
         ))
         self.assertIn("AG-SSH-002", {item.rule_id for item in findings})
         root_finding = next(item for item in findings if item.rule_id == "AG-SSH-002")
@@ -95,14 +95,14 @@ class SSHRegressionCorpusTests(unittest.TestCase):
 
     def test_unmatched_include_is_reported_as_incomplete_coverage(self):
         findings = audit_sshd_config(self.write_config(
-            "Include missing-configs/*.conf\\n"
-            "PermitRootLogin no\\n"
+            "Include missing-configs/*.conf\n"
+            "PermitRootLogin no\n"
         ))
         include = next(item for item in findings if item.rule_id == "AG-SSH-010")
         self.assertIn("matched no files", include.description.lower())
 
     def test_include_cycle_is_bounded_and_reported(self):
-        self.write_config('Include "sshd_config"\\n')
+        self.write_config('Include "sshd_config"\n')
         findings = audit_sshd_config(self.config)
         self.assertIn("AG-SSH-014", {item.rule_id for item in findings})
 
