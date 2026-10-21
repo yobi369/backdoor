@@ -87,8 +87,8 @@ class SourceAuditTests(unittest.TestCase):
 
     def test_dynamic_sql_construction_is_reported_but_parameterized_query_is_not(self):
         self.write("db.py", (
-            "cursor.execute(f\\"SELECT * FROM users WHERE id = {user_id}\\")\n"
-            "cursor.execute(\\"SELECT * FROM users WHERE id = ?\\", (user_id,))\n"
+            "cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")\n"
+            "cursor.execute(\"SELECT * FROM users WHERE id = ?\", (user_id,))\n"
         ))
         findings = audit_source_tree(self.root)
         sql_findings = [item for item in findings if item.rule_id == "AG-CODE-013"]
