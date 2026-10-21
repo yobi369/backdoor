@@ -1,0 +1,6 @@
+# Sample fixture only. Do not copy blindly into a production host.
+PermitRootLogin yes
+PermitEmptyPasswords no
+PasswordAuthentication yes
+PubkeyAuthentication yes
+X11Forwarding no

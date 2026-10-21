@@ -178,6 +178,30 @@ def audit_host_paths(root: Path) -> list[Finding]:
             findings.append(finding(rule_id, severity, title,
                 "Permission bits exceed the expected conservative policy.",
                 f"Mode {mode:04o}", path, remediation))
+    extra_checks = (
+        ("etc/ssh/sshd_config", "AG-HOST-007", "SSH daemon configuration is writable by group or others", False),
+        ("etc/crontab", "AG-HOST-008", "System crontab is writable by group or others", False),
+        ("etc/cron.d", "AG-HOST-009", "System cron drop-in directory is writable by group or others", True),
+        ("etc/sudoers.d", "AG-HOST-010", "sudoers drop-in directory is writable by group or others", True),
+    )
+    for relative, rule_id, title, expect_directory in extra_checks:
+        path = root / relative
+        try:
+            info = path.stat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            findings.append(finding("AG-HOST-004", "info", "Host policy path could not be inspected", str(exc), path=path))
+            continue
+        expected = stat.S_ISDIR(info.st_mode) if expect_directory else stat.S_ISREG(info.st_mode)
+        if not expected:
+            continue
+        mode = stat.S_IMODE(info.st_mode)
+        if mode & (stat.S_IWGRP | stat.S_IWOTH):
+            findings.append(finding(rule_id, "high", title,
+                "Group or other users have write permission on a security-sensitive policy path.",
+                f"Mode {mode:04o}", path,
+                "Remove unnecessary group/other write permission and verify ownership and local policy."))
     if not findings:
         findings.append(finding("AG-HOST-006", "info", "No checked host policy permission issues were found",
             "Selected high-value policy files passed permission-bit checks.", path=root,

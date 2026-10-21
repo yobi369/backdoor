@@ -90,6 +90,24 @@ class HostPathTests(unittest.TestCase):
             self.assertTrue(findings)
             self.assertTrue(all(f.severity == "info" for f in findings))
 
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits are required")
+    def test_flags_writable_ssh_daemon_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "etc" / "ssh").mkdir(parents=True)
+            config = root / "etc" / "ssh" / "sshd_config"
+            config.write_text("PermitRootLogin no\\n", encoding="utf-8")
+            config.chmod(0o666)
+            self.assertIn("AG-HOST-007", {f.rule_id for f in audit_host_paths(root)})
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits are required")
+    def test_flags_writable_cron_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "etc" / "cron.d").mkdir(parents=True)
+            (root / "etc" / "cron.d").chmod(0o777)
+            self.assertIn("AG-HOST-009", {f.rule_id for f in audit_host_paths(root)})
+
 
 class ReportingTests(unittest.TestCase):
     def test_json_output_is_valid(self):

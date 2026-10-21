@@ -119,3 +119,11 @@ Do not include credentials, private keys, access tokens, or sensitive host detai
 ## Project direction
 
 The goal is a transparent, testable, defensively focused security tool. Contributions should add documented rules, deterministic tests, evidence quality, platform-aware behavior, and clear false-positive handling.
+
+
+## Engineering and assurance documentation
+
+- [Threat model](docs/THREAT_MODEL.md): assets, trust boundaries, in-scope threats, exclusions, and safe-operation notes.
+- [Rule catalogue](docs/RULE_CATALOG.md): stable rule IDs, severity rationale, and limitations.
+- [Contributing guide](CONTRIBUTING.md): standards for rules, tests, and pull requests.
+- Example fixtures: examples/sshd_config.sample and examples/baseline.json.
