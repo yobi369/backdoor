@@ -122,7 +122,10 @@ class ReportingTests(unittest.TestCase):
             with redirect_stdout(output):
                 status = main(["--sshd-config", str(config), "--format", "json"])
             self.assertEqual(status, 0)
-            self.assertEqual(json.loads(output.getvalue())["findings"][0]["rule_id"], "AG-SSH-002")
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["findings"][0]["rule_id"], "AG-SSH-002")
+            self.assertEqual(report["summary"]["total"], 1)
+            self.assertEqual(report["summary"]["by_severity"]["high"], 1)
 
     def test_sarif_schema_version(self):
         with tempfile.TemporaryDirectory() as directory:
