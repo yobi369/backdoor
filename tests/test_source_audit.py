@@ -49,7 +49,7 @@ class SourceAuditTests(unittest.TestCase):
         self.assertNotIn("AG-CODE-005", {item.rule_id for item in findings})
 
     def test_javascript_review_candidates_are_reported(self):
-        path = self.write("src/app.ts", (
+        self.write("src/app.ts", (
             "const output = eval(input);\n"
             "element.innerHTML = userValue;\n"
             "const client = { rejectUnauthorized: false };\n"
@@ -57,7 +57,7 @@ class SourceAuditTests(unittest.TestCase):
         findings = audit_source_tree(self.root)
         by_id = {item.rule_id: item for item in findings}
         self.assertTrue({"AG-CODE-001", "AG-CODE-006", "AG-CODE-008"}.issubset(by_id))
-        self.assertEqual(by_id["AG-CODE-008"].path, str(path))
+        self.assertEqual(by_id["AG-CODE-008"].path, "src/app.ts")
         self.assertEqual(by_id["AG-CODE-008"].line, 2)
 
     def test_literal_credentials_are_reported_without_exposing_value(self):
@@ -74,7 +74,7 @@ class SourceAuditTests(unittest.TestCase):
         self.assertNotIn("AG-CODE-001", {item.rule_id for item in findings})
 
     def test_sarif_uses_actual_source_line(self):
-        path = self.write("app.py", "print('safe')\neval(user_input)\n")
+        self.write("app.py", "print('safe')\neval(user_input)\n")
         output = StringIO()
         with redirect_stdout(output):
             status = main(["--source-root", str(self.root), "--format", "sarif"])
@@ -83,7 +83,7 @@ class SourceAuditTests(unittest.TestCase):
         result = next(item for item in sarif["runs"][0]["results"] if item["ruleId"] == "AG-CODE-001")
         location = result["locations"][0]["physicalLocation"]
         self.assertEqual(location["region"]["startLine"], 2)
-        self.assertEqual(location["artifactLocation"]["uri"], str(path))
+        self.assertEqual(location["artifactLocation"]["uri"], "app.py")
 
     def test_dynamic_sql_construction_is_reported_but_parameterized_query_is_not(self):
         self.write("db.py", (

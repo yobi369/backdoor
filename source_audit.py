@@ -198,20 +198,20 @@ def audit_source_tree(root: Path) -> list[Finding]:
                 if file_info.st_size > MAX_SOURCE_BYTES:
                     findings.append(finding("AG-CODE-010", "info", "Source file skipped due to size",
                         f"The file exceeds the {MAX_SOURCE_BYTES}-byte analysis limit.",
-                        path=path, remediation="Review this file manually or split generated/vendor content."))
+                        path=path.relative_to(root), remediation="Review this file manually or split generated/vendor content."))
                     continue
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError as exc:
                 findings.append(finding("AG-CODE-010", "info", "Source file could not be inspected",
-                    "The file could not be read; checks were skipped.", str(exc), path,
+                    "The file could not be read; checks were skipped.", str(exc), path.relative_to(root),
                     "Check file permissions and inspect this file manually."))
                 continue
             if path.suffix.lower() == ".py":
-                findings.extend(_python_findings(path, text))
-            findings.extend(_line_findings(path, text))
+                findings.extend(_python_findings(path.relative_to(root), text))
+            findings.extend(_line_findings(path.relative_to(root), text))
 
     if not findings:
         findings.append(finding("AG-CODE-012", "info", "No source-code heuristic findings",
             "No enabled patterns matched the supported source files.",
-            path=root, remediation="This is not proof of absence of vulnerabilities; review coverage and dependencies."))
+            remediation="This is not proof of absence of vulnerabilities; review coverage and dependencies."))
     return findings

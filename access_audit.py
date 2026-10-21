@@ -291,6 +291,13 @@ def load_baseline(path: Path) -> set[tuple[str, str | None]]:
         result.add((item["rule_id"], item_path))
     return result
 
+def summarize_findings(findings: list[Finding]) -> dict[str, Any]:
+    counts = {severity: 0 for severity in SEVERITIES}
+    for item in findings:
+        counts[item.severity] += 1
+    return {"total": len(findings), "by_severity": counts}
+
+
 def render_sarif(findings: list[Finding]) -> dict[str, Any]:
     rules, results = {}, []
     for item in findings:
@@ -397,6 +404,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.format == "json":
         output = json.dumps({"tool": "AccessGuard", "version": RULES_VERSION,
+                             "summary": summarize_findings(findings),
                              "findings": [asdict(item) for item in findings]}, indent=2)
     elif args.format == "sarif":
         output = json.dumps(render_sarif(findings), indent=2)
