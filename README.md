@@ -125,5 +125,6 @@ The goal is a transparent, testable, defensively focused security tool. Contribu
 
 - [Threat model](docs/THREAT_MODEL.md): assets, trust boundaries, in-scope threats, exclusions, and safe-operation notes.
 - [Rule catalogue](docs/RULE_CATALOG.md): stable rule IDs, severity rationale, and limitations.
+- [Security validation](docs/SECURITY_VALIDATION.md): regression corpus, test methodology, and limits on interpreting results.
 - [Contributing guide](CONTRIBUTING.md): standards for rules, tests, and pull requests.
 - Example fixtures: examples/sshd_config.sample and examples/baseline.json.
