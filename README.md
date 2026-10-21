@@ -11,7 +11,7 @@ AccessGuard is a dependency-free Python security auditing tool for reviewing sel
 - Baseline suppressions for findings accepted by a team after review.
 - CI-friendly fail-on severity thresholds.
 - Checks for selected SSH daemon settings, SSH directory/private-key permissions, and selected Unix account-policy files.
-- Conservative source-code checks for dynamic execution, shell invocation, unsafe deserialization/YAML loading, disabled TLS verification, risky HTML sinks, race-prone temporary files, and likely hard-coded credentials.
+- Conservative source-code checks for dynamic execution, shell invocation, potentially unsafe SQL construction, unsafe deserialization/YAML loading, disabled TLS verification, risky HTML sinks, race-prone temporary files, and likely hard-coded credentials in source/config files.
 - Unit tests and GitHub Actions validation.
 
 ## Requirements
