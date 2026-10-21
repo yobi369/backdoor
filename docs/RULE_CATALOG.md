@@ -56,6 +56,6 @@ Severity is not a CVSS score. Findings should be validated against the target sy
 | AG-CODE-009 | High/Critical | Credential-like literals or private-key header | Heuristic may flag test fixtures; evidence redacts values |
 | AG-CODE-010 | Info | Source file skipped, unreadable, or unparsable | Findings may be incomplete for that file |
 | AG-CODE-011 | Info/Low | Source root cannot be safely inspected | Symlink roots are intentionally rejected |
-| AG-CODE-012 | Info | No enabled source heuristics matched | Not evidence that the code is vulnerability-free |
+| AG-CODE-012 | Info | No enabled source heuristics matched | Not evidence that the code is vulnerability-free |\n| AG-CODE-013 | High | Dynamically formatted Python/JavaScript SQL query | Does not trace data flow; query API and input provenance matter |
 
-Source mode currently inspects Python, JavaScript, JSX, TypeScript, and TSX files up to 1 MB each. It skips common generated/dependency directories and does not follow symlinks. It does not scan dependencies, Git history, binaries, templates in other languages, or runtime behavior.
+Source mode inspects Python, JavaScript, JSX, TypeScript, TSX, and selected JSON/YAML/TOML/INI/config files up to 1 MB each. Secret-pattern checks also include `.env` files. It skips common generated/dependency directories and does not follow symlinks. It does not scan dependencies, Git history, binaries, templates in other languages, or runtime behavior.
