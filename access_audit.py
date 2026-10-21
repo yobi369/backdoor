@@ -42,21 +42,21 @@ def _parse_global_sshd_options(path: Path):
     state = {"in_match": False, "files_seen": 0}
     max_depth, max_files = 16, 256
 
-    def add_include_note(rule_id, title, description, evidence, source_path, remediation):
-        findings.append(finding(rule_id, "info", title, description, evidence, source_path, remediation,
-            ("https://man.openbsd.org/sshd_config",)))
+    def note(rule_id, title, description, evidence, source_path, remediation):
+        findings.append(finding(rule_id, "info", title, description, evidence, source_path,
+            remediation, ("https://man.openbsd.org/sshd_config",)))
 
     def parse_file(current: Path, depth: int, stack: set[Path], is_root: bool = False):
         resolved = current.resolve()
         if resolved in stack:
-            add_include_note("AG-SSH-014", "SSH Include cycle detected",
+            note("AG-SSH-014", "SSH Include cycle detected",
                 "An Include pattern leads back to a file already being parsed; expansion stopped for this branch.",
-                str(resolved), current, "Remove the recursive Include relationship and validate the configuration with OpenSSH.")
+                str(resolved), current, "Remove the recursive Include relationship and validate with OpenSSH.")
             return
         if depth > max_depth or state["files_seen"] >= max_files:
-            add_include_note("AG-SSH-014", "SSH Include expansion limit reached",
+            note("AG-SSH-014", "SSH Include expansion limit reached",
                 "The bounded Include expansion limit was reached; remaining configuration was not inspected.",
-                str(current), current, "Review the Include graph and validate the effective configuration with OpenSSH.")
+                str(current), current, "Review the Include graph and validate with OpenSSH.")
             return
         state["files_seen"] += 1
         try:
@@ -67,9 +67,9 @@ def _parse_global_sshd_options(path: Path):
                     "The configuration file could not be inspected.", str(exc), current,
                     "Check the path and read permissions."))
             else:
-                add_include_note("AG-SSH-010", "Included SSH configuration could not be read",
+                note("AG-SSH-010", "Included SSH configuration could not be read",
                     "An included file matched a pattern but could not be inspected.", str(exc), current,
-                    "Check the include path and read permissions, then validate the effective configuration with OpenSSH.")
+                    "Check the include path and read permissions, then validate with OpenSSH.")
             return
 
         next_stack = stack | {resolved}
@@ -83,7 +83,7 @@ def _parse_global_sshd_options(path: Path):
 
             if key == "match":
                 state["in_match"] = True
-                add_include_note("AG-SSH-009", "Conditional SSH configuration requires review",
+                note("AG-SSH-009", "Conditional SSH configuration requires review",
                     "A Match block was found; conditional rules are not evaluated.",
                     f"Line {number}: {raw.strip()}", current,
                     "Review each Match block and validate effective settings with OpenSSH.")
@@ -91,15 +91,15 @@ def _parse_global_sshd_options(path: Path):
 
             if key == "include":
                 if not value:
-                    add_include_note("AG-SSH-010", "SSH Include directive has no path",
+                    note("AG-SSH-010", "SSH Include directive has no path",
                         "An Include directive did not provide a path pattern.",
                         f"Line {number}: {raw.strip()}", current,
-                        "Provide a valid Include pattern and validate the configuration with OpenSSH.")
+                        "Provide a valid Include pattern and validate with OpenSSH.")
                     continue
                 try:
                     patterns = shlex.split(value, comments=False, posix=True)
                 except ValueError as exc:
-                    add_include_note("AG-SSH-010", "SSH Include pattern is malformed",
+                    note("AG-SSH-010", "SSH Include pattern is malformed",
                         "The Include pattern could not be parsed safely.", f"Line {number}: {exc}",
                         current, "Correct quoting in the Include directive and validate with OpenSSH.")
                     continue
@@ -108,10 +108,10 @@ def _parse_global_sshd_options(path: Path):
                     search_pattern = str(candidate if candidate.is_absolute() else root_dir / candidate)
                     matches = sorted(glob.glob(search_pattern))
                     if not matches:
-                        add_include_note("AG-SSH-010", "SSH Include pattern matched no files",
+                        note("AG-SSH-010", "SSH Include pattern matched no files",
                             "The Include pattern did not resolve to any files; configuration coverage may be incomplete.",
                             f"Line {number}: {pattern}", current,
-                            "Check the pattern and target files, then validate the effective configuration with OpenSSH.")
+                            "Check the pattern and target files, then validate with OpenSSH.")
                         continue
                     for matched in matches:
                         parse_file(Path(matched), depth + 1, next_stack)
