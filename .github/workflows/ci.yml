@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, security-auditor-foundation]
+    branches: [master, accessguard-professional-v1]
   pull_request:
   workflow_dispatch:
 
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   test:
-    name: Python tests
+    name: Python 3.10 tests and package smoke test
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -24,3 +24,9 @@ jobs:
         run: python -m compileall -q access_audit.py backdoor.py tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Install package
+        run: python -m pip install .
+      - name: Verify installed command
+        run: accessguard --version
+      - name: Verify SARIF CLI output
+        run: accessguard --format sarif > /tmp/accessguard.sarif
