@@ -106,7 +106,7 @@ GitHub Actions runs tests, compiles the source, installs the package, and smoke-
 
 AccessGuard is a focused rules-based auditor, **not** a complete endpoint detection and response platform, vulnerability scanner, compliance certification, or guarantee of security.
 
-- SSH Match blocks and Include files are flagged for manual review; effective OpenSSH configuration is not fully evaluated.
+- SSH Include patterns are expanded with bounded recursion; Match blocks and OpenSSH token expansion are not fully evaluated, so effective settings still require platform validation.
 - Checks use filesystem permission bits. ACLs, ownership correctness, extended attributes, containers, service state, PAM, firewall state, kernel configuration, and network exposure are not comprehensively assessed.
 - Host checks inspect only selected files and do not recursively scan the filesystem.
 - Severity is a prioritization aid, not a formal risk score. Validate findings against the actual environment before making changes.

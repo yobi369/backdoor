@@ -29,7 +29,7 @@ AccessGuard is a local, read-only security posture auditor. It reports a limited
 ## Out of scope
 
 - Remote scanning, exploitation, credential collection, persistence, stealth, and command execution.
-- Full effective OpenSSH configuration evaluation, including complete Include expansion and Match semantics.
+- Full effective OpenSSH configuration evaluation, including Match semantics and all OpenSSH token-expansion rules.
 - ACLs, file ownership validation, SELinux/AppArmor policy, PAM, running service state, firewall configuration, kernel posture, container security, network exposure, and package vulnerabilities.
 - Formal compliance attestation or guarantee that a host is secure.
 
@@ -44,7 +44,7 @@ AccessGuard is a local, read-only security posture auditor. It reports a limited
 
 ## Known limitations and mitigations
 
-- The SSH parser is intentionally partial. It flags Match and Include constructs for manual review instead of pretending to compute effective settings.
+- The SSH parser expands bounded Include file patterns relative to the primary configuration directory. It reports unresolved patterns, cycles, and expansion limits; Match conditions and all OpenSSH token-expansion semantics are not evaluated.
 - Permission checks inspect mode bits only and may miss ACL-based exposure or ownership problems.
 - The scanner checks selected paths only and does not recursively walk the filesystem.
 - Baseline suppressions can hide a known finding; keep baseline changes reviewed and narrowly scoped by rule ID and path.

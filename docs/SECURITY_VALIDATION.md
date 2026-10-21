@@ -10,7 +10,7 @@ The corpus currently exercises:
 - A hardened configuration that should not trigger those risky-value rules.
 - Comments, blank lines, and OpenSSH's first-value-wins behavior for global options.
 - Explicit disclosure that `Match` blocks are not evaluated.
-- Explicit disclosure that `Include` files are not expanded.
+- Include expansion, unresolved patterns, and cycle protection.
 - SARIF 2.1.0 result-to-rule consistency.
 
 ## How to run
@@ -30,7 +30,7 @@ Before using AccessGuard to make production decisions, validate it against repre
 ## Next validation gates
 
 1. Add isolated Linux integration tests across supported distributions and OpenSSH versions.
-2. Test effective SSH policy with the platform's own validation facilities in a disposable environment; do not silently substitute a partial parser for effective configuration.
+2. Test effective SSH policy with the platform's own validation facilities in a disposable environment; Include expansion still does not evaluate Match conditions or all OpenSSH token semantics.
 3. Add permission/ownership/ACL cases and symlink edge cases, documenting platform-dependent expectations.
 4. Build a reviewed benchmark set with expected results, track false positives and false negatives, and publish methodology with any reported metrics.
 5. Obtain an independent security review before describing the tool as enterprise-ready.

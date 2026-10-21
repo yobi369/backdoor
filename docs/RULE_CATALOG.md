@@ -13,10 +13,10 @@ This catalogue describes the current implemented checks. It is deliberately expl
 | AG-SSH-007 | Low | Global X11Forwarding yes | May be intentional on managed systems |
 | AG-SSH-008 | Info | AllowUsers is configured | Does not verify the listed accounts |
 | AG-SSH-009 | Info | Match block requires manual review | Conditional configuration is not evaluated |
-| AG-SSH-010 | Info | Include directive requires manual review | Included files are not expanded |
+| AG-SSH-010 | Info | Include pattern is unresolved, malformed, or unreadable | Relative patterns are resolved from the primary config directory; token expansion is not implemented |
 | AG-SSH-011 | Low | Malformed global directive line | Syntax validation is not a substitute for sshd validation |
 | AG-SSH-012 | Info | No active global directives | Empty configuration may rely on defaults or included files |
-| AG-SSH-013 | Info | No checked global SSH directives flagged | Not a full SSH audit |
+| AG-SSH-013 | Info | No checked global SSH directives flagged | Not a full SSH audit |\n| AG-SSH-014 | Info | Include cycle or expansion limit | Expansion is bounded; remaining files may be uninspected |
 | AG-FS-001–006 | Info/Low | SSH path missing, wrong type, or unreadable | Permission checks depend on current process visibility |
 | AG-FS-007 | Critical | Common private-key filename has group/other permissions | Filename heuristic; ownership and ACLs are not checked |
 | AG-FS-008 | High | authorized_keys writable by group/others | Does not validate key content or ownership |
