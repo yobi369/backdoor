@@ -16,7 +16,8 @@ This catalogue describes the current implemented checks. It is deliberately expl
 | AG-SSH-010 | Info | Include pattern is unresolved, malformed, or unreadable | Relative patterns are resolved from the primary config directory; token expansion is not implemented |
 | AG-SSH-011 | Low | Malformed global directive line | Syntax validation is not a substitute for sshd validation |
 | AG-SSH-012 | Info | No active global directives | Empty configuration may rely on defaults or included files |
-| AG-SSH-013 | Info | No checked global SSH directives flagged | Not a full SSH audit |\n| AG-SSH-014 | Info | Include cycle or expansion limit | Expansion is bounded; remaining files may be uninspected |
+| AG-SSH-013 | Info | No checked global SSH directives flagged | Not a full SSH audit |
+| AG-SSH-014 | Info | Include cycle or expansion limit | Expansion is bounded; remaining files may be uninspected |
 | AG-FS-001–006 | Info/Low | SSH path missing, wrong type, or unreadable | Permission checks depend on current process visibility |
 | AG-FS-007 | Critical | Common private-key filename has group/other permissions | Filename heuristic; ownership and ACLs are not checked |
 | AG-FS-008 | High | authorized_keys writable by group/others | Does not validate key content or ownership |
@@ -56,6 +57,7 @@ Severity is not a CVSS score. Findings should be validated against the target sy
 | AG-CODE-009 | High/Critical | Credential-like literals or private-key header | Heuristic may flag test fixtures; evidence redacts values |
 | AG-CODE-010 | Info | Source file skipped, unreadable, or unparsable | Findings may be incomplete for that file |
 | AG-CODE-011 | Info/Low | Source root cannot be safely inspected | Symlink roots are intentionally rejected |
-| AG-CODE-012 | Info | No enabled source heuristics matched | Not evidence that the code is vulnerability-free |\n| AG-CODE-013 | High | Dynamically formatted Python/JavaScript SQL query | Does not trace data flow; query API and input provenance matter |
+| AG-CODE-012 | Info | No enabled source heuristics matched | Not evidence that the code is vulnerability-free |
+| AG-CODE-013 | High | Dynamically formatted Python/JavaScript SQL query | Does not trace data flow; query API and input provenance matter |
 
 Source mode inspects Python, JavaScript, JSX, TypeScript, TSX, and selected JSON/YAML/TOML/INI/config files up to 1 MB each. Secret-pattern checks also include `.env` files. It skips common generated/dependency directories and does not follow symlinks. It does not scan dependencies, Git history, binaries, templates in other languages, or runtime behavior.
