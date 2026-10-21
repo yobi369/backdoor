@@ -119,7 +119,6 @@ AccessGuard is a focused rules-based auditor, **not** a complete endpoint detect
 - Source-code checks are conservative pattern/AST heuristics. They do not replace language-specific SAST, dependency auditing, secret-history scanning, dynamic testing, or manual review.
 - Checks use filesystem permission bits. ACLs, ownership correctness, extended attributes, containers, service state, PAM, firewall state, kernel configuration, and network exposure are not comprehensively assessed.
 - Host checks inspect only selected files and do not recursively scan the filesystem.
-- Source-code checks are conservative pattern/AST heuristics. They do not replace language-specific SAST, dependency auditing, secret-history scanning, dynamic testing, or manual review.
 - Severity is a prioritization aid, not a formal risk score. Validate findings against the actual environment before making changes.
 - The tool does not perform automatic remediation. Changes to SSH and account policy can lock out administrators; use an approved recovery path.
 
@@ -137,5 +136,6 @@ The goal is a transparent, testable, defensively focused security tool. Contribu
 - [Threat model](docs/THREAT_MODEL.md): assets, trust boundaries, in-scope threats, exclusions, and safe-operation notes.
 - [Rule catalogue](docs/RULE_CATALOG.md): stable rule IDs, severity rationale, and limitations.
 - [Security validation](docs/SECURITY_VALIDATION.md): regression corpus, test methodology, and limits on interpreting results.
+- [CrowdBug integration guide](docs/CROWDBUG_INTEGRATION.md): safe local usage, CI hand-off contract, and triage workflow.
 - [Contributing guide](CONTRIBUTING.md): standards for rules, tests, and pull requests.
 - Example fixtures: examples/sshd_config.sample and examples/baseline.json.
