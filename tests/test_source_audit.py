@@ -104,6 +104,44 @@ class SourceAuditTests(unittest.TestCase):
         self.assertNotIn("this-is-a-long-secret-value", " ".join(item.evidence for item in findings))
         self.assertNotIn("another-long-secret-value", " ".join(item.evidence for item in findings))
 
+    def test_javascript_interpolated_query_is_reported(self):
+        self.write("db.ts", "db.query(" + chr(96) + "SELECT * FROM users WHERE id = ${userId}" + chr(96) + ")\n")
+        findings = audit_source_tree(self.root)
+        item = next(item for item in findings if item.rule_id == "AG-CODE-013")
+        self.assertEqual(item.line, 1)
+        self.assertEqual(item.path, "db.ts")
+
+    def test_oversized_source_file_is_reported_and_not_scanned(self):
+        self.write("large.js", "eval(input)\n" * 100_000)
+        findings = audit_source_tree(self.root)
+        ids = {item.rule_id for item in findings}
+        self.assertIn("AG-CODE-010", ids)
+        self.assertNotIn("AG-CODE-001", ids)
+
+    def test_source_symlink_is_not_followed(self):
+        target = self.root.parent / (self.root.name + "-outside.js")
+        target.write_text("eval(userInput)\n", encoding="utf-8")
+        link = self.root / "linked.js"
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError):
+            target.unlink(missing_ok=True)
+            self.skipTest("Symlinks are not supported in this environment")
+        self.addCleanup(lambda: target.unlink(missing_ok=True))
+        findings = audit_source_tree(self.root)
+        self.assertNotIn("AG-CODE-001", {item.rule_id for item in findings})
+
+    def test_symlink_source_root_is_rejected(self):
+        real_root = self.root / "real"
+        real_root.mkdir()
+        link = self.root / "linked-root"
+        try:
+            link.symlink_to(real_root, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("Directory symlinks are not supported in this environment")
+        findings = audit_source_tree(link)
+        self.assertEqual(findings[0].rule_id, "AG-CODE-011")
+
     def test_source_root_must_be_a_real_directory(self):
         path = self.write("regular.py", "print('hello')\n")
         findings = audit_source_tree(path)
