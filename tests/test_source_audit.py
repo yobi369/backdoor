@@ -49,7 +49,7 @@ class SourceAuditTests(unittest.TestCase):
         self.assertNotIn("AG-CODE-005", {item.rule_id for item in findings})
 
     def test_javascript_review_candidates_are_reported(self):
-        path = self.write("src/app.ts", (
+        self.write("src/app.ts", (
             "const output = eval(input);\n"
             "element.innerHTML = userValue;\n"
             "const client = { rejectUnauthorized: false };\n"
@@ -74,7 +74,7 @@ class SourceAuditTests(unittest.TestCase):
         self.assertNotIn("AG-CODE-001", {item.rule_id for item in findings})
 
     def test_sarif_uses_actual_source_line(self):
-        path = self.write("app.py", "print('safe')\neval(user_input)\n")
+        self.write("app.py", "print('safe')\neval(user_input)\n")
         output = StringIO()
         with redirect_stdout(output):
             status = main(["--source-root", str(self.root), "--format", "sarif"])
