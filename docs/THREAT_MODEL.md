@@ -2,7 +2,7 @@
 
 ## Purpose
 
-AccessGuard is a local, read-only security posture auditor. It reports a limited set of risky SSH settings and permission issues on selected SSH and Unix account-policy paths. It is not a remote administration agent, EDR, vulnerability scanner, or compliance certification product.
+AccessGuard is a local, read-only security posture auditor. It reports a limited set of risky SSH settings and permission issues on selected SSH and Unix account-policy paths. It is not a remote administration agent, EDR, full vulnerability scanner, or compliance certification product.
 
 ## Assets to protect
 
@@ -31,7 +31,7 @@ AccessGuard is a local, read-only security posture auditor. It reports a limited
 - Remote scanning, exploitation, credential collection, persistence, stealth, and command execution.
 - Full effective OpenSSH configuration evaluation, including Match semantics and all OpenSSH token-expansion rules.
 - ACLs, file ownership validation, SELinux/AppArmor policy, PAM, running service state, firewall configuration, kernel posture, container security, network exposure, and package vulnerabilities.
-- Formal compliance attestation or guarantee that a host is secure.
+- Formal compliance attestation or guarantee that a host is secure.\n- Complete source-code vulnerability discovery, dependency vulnerability matching, secret-history scanning, or dynamic application testing.
 
 ## Security properties
 
