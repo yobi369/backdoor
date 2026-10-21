@@ -1,0 +1,8 @@
+{
+  "suppressions": [
+    {
+      "rule_id": "AG-SSH-002",
+      "path": "/etc/ssh/sshd_config"
+    }
+  ]
+}
