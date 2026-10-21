@@ -1,4 +1,4 @@
-"""Read-only local SSH and host-permission security auditor."""
+"""Read-only local host-posture and source-code security auditor."""
 from __future__ import annotations
 
 import argparse
@@ -12,7 +12,7 @@ from typing import Any
 
 SEVERITIES = ("info", "low", "medium", "high", "critical")
 SEVERITY_RANK = {severity: index for index, severity in enumerate(SEVERITIES)}
-RULES_VERSION = "1.1.0"
+RULES_VERSION = "1.2.0"
 
 @dataclass(frozen=True)
 class Finding:
@@ -24,9 +24,11 @@ class Finding:
     path: str | None = None
     remediation: str = ""
     references: tuple[str, ...] = ()
+    line: int | None = None
 
-def finding(rule_id, severity, title, description, evidence="", path=None, remediation="", references=()):
-    return Finding(rule_id, severity, title, description, evidence, str(path) if path is not None else None, remediation, references)
+def finding(rule_id, severity, title, description, evidence="", path=None, remediation="", references=(), line=None):
+    return Finding(rule_id, severity, title, description, evidence,
+        str(path) if path is not None else None, remediation, references, line)
 
 def _parse_global_sshd_options(path: Path):
     """Parse global SSH options and expand bounded Include patterns.
@@ -305,8 +307,10 @@ def render_sarif(findings: list[Finding]) -> dict[str, Any]:
                   "message": {"text": item.description + (f" Evidence: {item.evidence}" if item.evidence else "")},
                   "properties": {"severity": item.severity}}
         if item.path:
-            result["locations"] = [{"physicalLocation": {
-                "artifactLocation": {"uri": item.path}, "region": {"startLine": 1}}}]
+            physical_location = {"artifactLocation": {"uri": item.path}}
+            if item.line is not None:
+                physical_location["region"] = {"startLine": item.line}
+            result["locations"] = [{"physicalLocation": physical_location}]
         results.append(result)
     return {"$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0",
             "runs": [{"tool": {"driver": {"name": "AccessGuard", "version": RULES_VERSION,
@@ -324,7 +328,7 @@ def render_markdown(findings: list[Finding]) -> str:
     lines.extend(["", "## Details", ""])
     for item in findings:
         lines.extend([f"### {item.severity.upper()} — {item.title}", "",
-            f"- Rule: {item.rule_id}", f"- Location: {item.path or 'not applicable'}",
+            f"- Rule: {item.rule_id}", f"- Location: {item.path + (':' + str(item.line) if item.line is not None else '') if item.path else 'not applicable'}",
             f"- Description: {item.description}"])
         if item.evidence:
             lines.append(f"- Evidence: {item.evidence}")
@@ -339,7 +343,7 @@ def render_markdown(findings: list[Finding]) -> str:
 def render_text(findings: list[Finding]) -> str:
     lines = [f"AccessGuard {RULES_VERSION} — read-only local security audit"]
     for item in findings:
-        location = f" [{item.path}]" if item.path else ""
+        location = f" [{item.path}{':' + str(item.line) if item.line is not None else ''}]" if item.path else ""
         lines.append(f"[{item.severity.upper()}] {item.rule_id}: {item.title}{location}")
         lines.append(f"  {item.description}")
         if item.evidence:
@@ -349,7 +353,7 @@ def render_text(findings: list[Finding]) -> str:
     lines.append(f"\n{len(findings)} finding(s). Scope is limited; review findings in context.")
     return "\n".join(lines)
 
-def run_audit(sshd_config: Path | None, ssh_dir: Path | None, host_root: Path | None = None) -> list[Finding]:
+def run_audit(sshd_config: Path | None, ssh_dir: Path | None, host_root: Path | None = None, source_root: Path | None = None) -> list[Finding]:
     findings = []
     if sshd_config is not None:
         findings.extend(audit_sshd_config(sshd_config))
@@ -357,29 +361,33 @@ def run_audit(sshd_config: Path | None, ssh_dir: Path | None, host_root: Path | 
         findings.extend(audit_ssh_directory(ssh_dir))
     if host_root is not None:
         findings.extend(audit_host_paths(host_root))
+    if source_root is not None:
+        from source_audit import audit_source_tree
+        findings.extend(audit_source_tree(source_root))
     if not findings:
         findings.append(finding("AG-CLI-001", "info", "No audit targets selected",
             "Choose an SSH config, SSH directory, or --host-root."))
     return findings
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Read-only local SSH and host-permission security audit.")
+    parser = argparse.ArgumentParser(description="Read-only local host-posture and source-code security audit.")
     parser.add_argument("--sshd-config", type=Path, help="Inspect sshd_config (read-only).")
     parser.add_argument("--ssh-dir", type=Path, help="Inspect a local SSH directory (read-only).")
     parser.add_argument("--host-root", type=Path, help="Inspect selected files beneath a Unix root; no recursive scan.")
+    parser.add_argument("--source-root", type=Path, help="Inspect supported Python/JavaScript/TypeScript source files using conservative static heuristics.")
     parser.add_argument("--format", choices=("text", "json", "markdown", "sarif"), default="text")
     parser.add_argument("--baseline", type=Path, help="JSON baseline of reviewed accepted findings.")
     parser.add_argument("--fail-on", choices=("none", "info", "low", "medium", "high", "critical"), default="none")
     parser.add_argument("--version", action="version", version=f"AccessGuard {RULES_VERSION}")
     args = parser.parse_args(argv)
-    sshd_config, ssh_dir, host_root = args.sshd_config, args.ssh_dir, args.host_root
-    if sshd_config is None and ssh_dir is None and host_root is None:
+    sshd_config, ssh_dir, host_root, source_root = args.sshd_config, args.ssh_dir, args.host_root, args.source_root
+    if sshd_config is None and ssh_dir is None and host_root is None and source_root is None:
         config, sshdir = Path("/etc/ssh/sshd_config"), Path.home() / ".ssh"
         sshd_config = config if config.exists() else None
         ssh_dir = sshdir if sshdir.exists() else None
         host_root = Path("/") if os.name == "posix" and Path("/etc/passwd").exists() else None
     try:
-        findings = run_audit(sshd_config, ssh_dir, host_root)
+        findings = run_audit(sshd_config, ssh_dir, host_root, source_root)
         if args.baseline:
             accepted = load_baseline(args.baseline)
             findings = [item for item in findings if (item.rule_id, item.path) not in accepted
