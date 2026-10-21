@@ -85,6 +85,25 @@ class SourceAuditTests(unittest.TestCase):
         self.assertEqual(location["region"]["startLine"], 2)
         self.assertEqual(location["artifactLocation"]["uri"], str(path))
 
+    def test_dynamic_sql_construction_is_reported_but_parameterized_query_is_not(self):
+        self.write("db.py", (
+            "cursor.execute(f\"SELECT * FROM users WHERE id = {user_id}\")\n"
+            "cursor.execute(\"SELECT * FROM users WHERE id = ?\", (user_id,))\n"
+        ))
+        findings = audit_source_tree(self.root)
+        sql_findings = [item for item in findings if item.rule_id == "AG-CODE-013"]
+        self.assertEqual(len(sql_findings), 1)
+        self.assertEqual(sql_findings[0].line, 1)
+
+    def test_env_and_json_credentials_are_scanned_with_redacted_evidence(self):
+        self.write(".env", "API_TOKEN=this-is-a-long-secret-value\n")
+        self.write("settings.json", '{"password": "another-long-secret-value"}\n')
+        findings = [item for item in audit_source_tree(self.root) if item.rule_id == "AG-CODE-009"]
+        self.assertGreaterEqual(len(findings), 2)
+        self.assertTrue(all("redacted" in item.evidence.lower() for item in findings))
+        self.assertNotIn("this-is-a-long-secret-value", " ".join(item.evidence for item in findings))
+        self.assertNotIn("another-long-secret-value", " ".join(item.evidence for item in findings))
+
     def test_source_root_must_be_a_real_directory(self):
         path = self.write("regular.py", "print('hello')\n")
         findings = audit_source_tree(path)
