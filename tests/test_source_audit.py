@@ -22,7 +22,7 @@ class SourceAuditTests(unittest.TestCase):
         return path
 
     def test_python_dangerous_calls_are_reported_with_lines(self):
-        path = self.write("app.py", (
+        self.write("app.py", (
             "import subprocess\n"
             "import pickle\n"
             "import yaml\n"
