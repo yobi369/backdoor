@@ -1,16 +1,20 @@
 import json
 import os
-import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from access_audit import audit_host_paths, audit_ssh_directory, audit_sshd_config, load_baseline, main, render_sarif, run_audit
+from access_audit import (
+    audit_host_paths,
+    audit_ssh_directory,
+    audit_sshd_config,
+    load_baseline,
+    main,
+    render_sarif,
+    run_audit,
+)
 
 
 class SshdConfigTests(unittest.TestCase):
