@@ -99,7 +99,7 @@ class SSHRegressionCorpusTests(unittest.TestCase):
             "PermitRootLogin no\n"
         ))
         include = next(item for item in findings if item.rule_id == "AG-SSH-010")
-        self.assertIn("matched no files", include.description.lower())
+        self.assertIn("coverage may be incomplete", include.description.lower())
 
     def test_include_cycle_is_bounded_and_reported(self):
         self.write_config('Include "sshd_config"\n')
