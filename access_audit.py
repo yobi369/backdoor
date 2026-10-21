@@ -314,7 +314,7 @@ def render_sarif(findings: list[Finding]) -> dict[str, Any]:
         results.append(result)
     return {"$schema": "https://json.schemastore.org/sarif-2.1.0.json", "version": "2.1.0",
             "runs": [{"tool": {"driver": {"name": "AccessGuard", "version": RULES_VERSION,
-                "informationUri": "https://github.com/yobi369/backdoor", "rules": list(rules.values())}},
+                "informationUri": "https://github.com/yobi369/accessguard-auditor", "rules": list(rules.values())}},
                 "results": results}]}
 
 def render_markdown(findings: list[Finding]) -> str:
