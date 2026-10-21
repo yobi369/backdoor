@@ -139,7 +139,7 @@ def _line_findings(path: Path, text: str) -> list[Finding]:
                     "A false TLS-verification option can allow intercepted connections; library context is not inferred.",
                     "TLS verification option set to false", path,
                     "Keep certificate verification enabled and configure trusted CA certificates.", line=number))
-            if re.search(r"\b(?:query|execute)\s*\(\s*\x60[^\x60]*\$\{", line):
+            if re.search(r"\b(?:query|execute)\s*\(\s*(?:\x60[^\x60]*\$\{|[\x27\"][^\x27\"\n]*[\x27\"]\s*\+)", line):
                 findings.append(finding("AG-CODE-013", "high", "Potential SQL query built dynamically",
                     "A query/execute call appears to use template interpolation; SQL injection depends on API and input provenance.",
                     "Interpolated template passed to query/execute; data flow is not assessed", path,
@@ -152,7 +152,7 @@ def _line_findings(path: Path, text: str) -> list[Finding]:
             placeholder = normalized in PLACEHOLDER_VALUES or normalized.startswith(
                 ("your_", "example_", "placeholder_", "replace_me")
             )
-            if not placeholder and not (value.startswith(") and value.endswith(")):
+            if not placeholder:
                 findings.append(finding("AG-CODE-009", "high", "Possible hard-coded credential",
                     "A credential-like assignment contains a literal value; this heuristic may flag test fixtures and requires review.",
                     "Credential-like value detected; literal redacted", path,
