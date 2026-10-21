@@ -148,5 +148,21 @@ class SourceAuditTests(unittest.TestCase):
         self.assertEqual(findings[0].rule_id, "AG-CODE-011")
 
 
+    def test_javascript_concatenated_sql_is_reported_but_parameterized_query_is_not(self):
+        self.write("db.js", (
+            'db.query("SELECT * FROM users WHERE id = " + userId);\\n'
+            'db.query("SELECT * FROM users WHERE id = ?", [userId]);\\n'
+        ))
+        findings = [item for item in audit_source_tree(self.root) if item.rule_id == "AG-CODE-013"]
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].path, "db.js")
+        self.assertEqual(findings[0].line, 1)
+
+    def test_secret_placeholders_are_not_reported_as_credentials(self):
+        self.write("settings.py", 'API_KEY = "your_api_key"\\nPASSWORD = "replace_me"\\n')
+        findings = [item for item in audit_source_tree(self.root) if item.rule_id == "AG-CODE-009"]
+        self.assertEqual(findings, [])
+
+
 if __name__ == "__main__":
     unittest.main()
