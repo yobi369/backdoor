@@ -141,8 +141,8 @@ def _line_findings(path: Path, text: str) -> list[Finding]:
                     "Keep certificate verification enabled and configure trusted CA certificates.", line=number))
             if re.search(r"\b(?:query|execute)\s*\(\s*(?:\x60[^\x60]*\$\{|[\x27\"][^\x27\"\n]*[\x27\"]\s*\+)", line):
                 findings.append(finding("AG-CODE-013", "high", "Potential SQL query built dynamically",
-                    "A query/execute call appears to use template interpolation; SQL injection depends on API and input provenance.",
-                    "Interpolated template passed to query/execute; data flow is not assessed", path,
+                    "A query/execute call appears to build SQL with interpolation or concatenation; injection depends on API and input provenance.",
+                    "Interpolated or concatenated query passed to query/execute; data flow is not assessed", path,
                     "Use parameterized queries for values and allowlist any dynamic identifiers.", line=number))
 
         secret_match = SECRET_ASSIGNMENT.search(line)
